@@ -1,0 +1,20 @@
+{
+    "name": "todo-electron",
+    "version": "1.0.0",
+    "description": "To-Do App based in Markdown featuring P2P syncing",
+    "main": "src/main/index.js",
+    "scripts": {
+        "start": "electron ."
+    },
+    "keywords": [],
+    "author": "Ari Brandão",
+    "license": "GPL-3.0-only",
+    "dependencies": {
+        "chokidar": "^4.0.0",
+        "yaml": "^2.7.0"
+    },
+    "devDependencies": {
+        "electron": "^31.0.0"
+    },
+    "type": "commonjs"
+}
