@@ -191,6 +191,12 @@ body {
     border: 1px solid transparent;
 }
 
+.priority-low {
+    background-color: rgba(73, 169, 248, 0.1);
+    color: var(--terminal-cyan);
+    border-color: var(--terminal-cyan);
+}
+
 .priority-high {
     background-color: rgba(248, 81, 73, 0.1);
     color: var(--terminal-red);
