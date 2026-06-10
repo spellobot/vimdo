@@ -14,3 +14,113 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
+
+let currentMode = 'NORMAL';
+let testArray = [
+    {id:0, title:'Task 0', status:'pending', priority:'high', content:"<h1>Task</h1><p>This is a <b>test</b>.</p>"},
+    {id:1, title:'Task 1', status:'completed', priority:'low', content:"<h1>Another task</h1> This is <i>another</i> <b>test</b>."}
+];
+let selectedIndex = 0;
+
+//const viewer = document.getElementById('renderViewer');
+//const editor = document.getElementById('markdownEditor');
+const commandInput = document.getElementById('commandInput');
+const statusMode = document.getElementById('vimMode');
+const fileTree = document.getElementById('fileTree');
+const taskTitle = document.getElementById('taskTitle');
+const markdownContent = document.getElementById('markdownContent');
+
+// Handles sidebar file list rendering
+function renderSidebar() {
+    fileTree.innerHTML = '';
+    
+    let htmlBuffer = '';
+    
+    testArray.forEach((task, index) => {
+        htmlBuffer += `
+            <div class="file-item" data-index="${index}">
+                <span class="status-indicator ${task.status.toLowerCase()}"></span>
+                <span class="file-title">${task.title}</span>
+            </div>
+        `;
+    });
+
+    fileTree.innerHTML = htmlBuffer;
+}
+
+
+// Handles sidebar cursor selection & task content rendering
+function renderSelection() {
+    // Sidebar cursor selection
+    let elementList = document.querySelectorAll('.file-item');
+    elementList.forEach(element => {
+        element.classList.remove('active');
+    });
+    elementList[selectedIndex].classList.add('active');
+
+    // Selected task content
+    let activeTask = testArray[selectedIndex];
+    taskTitle.textContent = activeTask.title;
+    markdownContent.innerHTML = activeTask.content;
+}
+
+window.addEventListener('keydown', function(event) {
+    switch (currentMode) {
+        case 'NORMAL':
+            handleNormalMode(event);
+            break;
+
+        case 'COMMAND':
+            handleCommandMode(event);
+            break;
+
+        case 'INSERT':
+            handleInsertMode(event);
+            break;
+    }
+});
+
+function handleNormalMode(event) {
+    let key = event.key;
+
+    if (key === ":") {
+        currentMode = 'COMMAND';
+        statusMode.textContent = currentMode;
+        commandInput.readOnly = false;
+        event.preventDefault();
+        commandInput.focus();
+    }
+    
+    if (key === "j") {
+        if (selectedIndex + 1 < testArray.length) {
+                selectedIndex++;
+                renderSelection();
+        }
+    }
+
+    if (key === "k") {
+        if (selectedIndex > 0) {
+            selectedIndex--;
+            renderSelection();
+        }
+    }
+}
+
+function handleCommandMode(event) {
+    let key = event.key;
+
+    if (key === "Escape") {
+        currentMode = 'NORMAL';
+        statusMode.textContent = currentMode;
+        commandInput.readOnly = true;
+        commandInput.blur();
+        commandInput.value = '';
+    }
+}
+
+function handleInsertMode(event) {
+    let key = event.key;
+}
+
+renderSidebar();
+renderSelection();
