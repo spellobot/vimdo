@@ -17,18 +17,28 @@
 
 let currentMode = 'NORMAL';
 let testArray = [
+    /* id: (int)
+     * title: (string)
+     * status: [pending, completed]
+     * priority: [low, high]
+     * content: (string) 
+     */
     {id:0, title:'Task 0', status:'pending', priority:'high', content:"<h1>Task</h1><p>This is a <b>test</b>.</p>"},
     {id:1, title:'Task 1', status:'completed', priority:'low', content:"<h1>Another task</h1> This is <i>another</i> <b>test</b>."}
 ];
 let selectedIndex = 0;
 
-//const viewer = document.getElementById('renderViewer');
-//const editor = document.getElementById('markdownEditor');
+const viewer = document.getElementById('renderView');
+const editor = document.getElementById('markdownEditor');
+
 const commandInput = document.getElementById('commandInput');
 const statusMode = document.getElementById('vimMode');
 const fileTree = document.getElementById('fileTree');
+
 const taskTitle = document.getElementById('taskTitle');
 const markdownContent = document.getElementById('markdownContent');
+const priorityBadge = document.getElementById('priorityBadge');
+const statusBadge = document.getElementById('statusBadge');
 
 // Handles sidebar file list rendering
 function renderSidebar() {
@@ -51,6 +61,7 @@ function renderSidebar() {
 
 // Handles sidebar cursor selection & task content rendering
 function renderSelection() {
+
     // Sidebar cursor selection
     let elementList = document.querySelectorAll('.file-item');
     elementList.forEach(element => {
@@ -60,8 +71,13 @@ function renderSelection() {
 
     // Selected task content
     let activeTask = testArray[selectedIndex];
+
     taskTitle.textContent = activeTask.title;
     markdownContent.innerHTML = activeTask.content;
+    priorityBadge.className = `badge priority-${activeTask.priority}`;
+    priorityBadge.textContent = `${activeTask.priority}`;
+    statusBadge.className = `badge status-${activeTask.status}`;
+    statusBadge.textContent = `${activeTask.status}`;
 }
 
 window.addEventListener('keydown', function(event) {
@@ -86,9 +102,21 @@ function handleNormalMode(event) {
     if (key === ":") {
         currentMode = 'COMMAND';
         statusMode.textContent = currentMode;
+
         commandInput.readOnly = false;
         event.preventDefault();
         commandInput.focus();
+    }
+
+    if (key === "i") {
+        currentMode = 'INSERT';
+        statusMode.textContent = currentMode;
+
+        event.preventDefault();
+        editor.value = testArray[selectedIndex].content;
+        viewer.classList.add('hidden');
+        editor.classList.remove('hidden');
+        editor.focus();
     }
     
     if (key === "j") {
@@ -112,6 +140,7 @@ function handleCommandMode(event) {
     if (key === "Escape") {
         currentMode = 'NORMAL';
         statusMode.textContent = currentMode;
+
         commandInput.readOnly = true;
         commandInput.blur();
         commandInput.value = '';
@@ -120,6 +149,18 @@ function handleCommandMode(event) {
 
 function handleInsertMode(event) {
     let key = event.key;
+
+    if (key === "Escape") {
+        currentMode = 'NORMAL';
+        statusMode.textContent = currentMode;
+
+        testArray[selectedIndex].content = editor.value;
+        viewer.classList.remove('hidden');
+        editor.classList.add('hidden');
+        editor.blur();
+
+        renderSelection();
+    }
 }
 
 renderSidebar();
