@@ -19,6 +19,11 @@ const { app, BrowserWindow, ipcMain } = require('electron');
 const { join } = require('path');
 const os = require('os');
 
+// Performance optimizations
+app.commandLine.appendSwitch('js-flags', '--max-old-space-size=32 --max-semi-space-size=2');
+app.commandLine.appendSwitch('disable-gpu');
+app.commandLine.appendSwitch('disable-software-rasterizer');
+
 function createWindow() {
     const win = new BrowserWindow({
         width: 800,
