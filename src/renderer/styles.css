@@ -209,6 +209,12 @@ body {
     border-color: var(--text-secondary);
 }
 
+.status-completed {
+    background-color: rgba(73, 248, 105, 0.1);
+    color: var(--terminal-green);
+    border-color: var(--terminal-green);
+}
+
 .tags-list {
     display: flex;
     gap: 6px;
