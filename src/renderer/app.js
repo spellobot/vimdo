@@ -21,10 +21,11 @@ let testArray = [
      * title: (string)
      * status: [pending, completed]
      * priority: [low, high]
+     * tags: (string)
      * content: (string) 
      */
-    {id:0, title:'Task 0', status:'pending', priority:'high', content:"<h1>Task</h1><p>This is a <b>test</b>.</p>"},
-    {id:1, title:'Task 1', status:'completed', priority:'low', content:"<h1>Another task</h1> This is <i>another</i> <b>test</b>."}
+    {id:0, title:'Task 0', status:'pending', priority:'high', tags:["test", "other-test"], content:"<h1>Task</h1><p>This is a <b>test</b>.</p>"},
+    {id:1, title:'Task 1', status:'completed', priority:'low', tags:["test"], content:"<h1>Another task</h1> This is <i>another</i> <b>test</b>."}
 ];
 let selectedIndex = 0;
 
@@ -39,6 +40,7 @@ const taskTitle = document.getElementById('taskTitle');
 const markdownContent = document.getElementById('markdownContent');
 const priorityBadge = document.getElementById('priorityBadge');
 const statusBadge = document.getElementById('statusBadge');
+const taskTags = document.getElementById('taskTags');
 
 // Handles sidebar file list rendering
 function renderSidebar() {
@@ -78,6 +80,18 @@ function renderSelection() {
     priorityBadge.textContent = `${activeTask.priority}`;
     statusBadge.className = `badge status-${activeTask.status}`;
     statusBadge.textContent = `${activeTask.status}`;
+
+    let htmlBuffer = '';
+
+    activeTask.tags.forEach((tag, index) => {
+        htmlBuffer += `
+            <span class="tag-item">#${activeTask.tags[index].toLowerCase()}</span>
+        `
+    });
+
+    taskTags.innerHTML = htmlBuffer;
+}
+
 }
 
 window.addEventListener('keydown', function(event) {
