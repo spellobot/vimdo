@@ -280,11 +280,41 @@ body {
     user-select: none;
 }
 
-.left-status, .right-status {
+.left-status {
     display: flex;
     align-items: center;
     gap: 12px;
     height: 100%;
+
+    flex: 0 0 300px;
+    min-width: 0;
+}
+
+.file-info {
+    color: var(--text-secondary);
+
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex-grow: 1;
+}
+
+.right-status {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    height: 100%;
+
+    flex-grow: 1;
+    justify-content: space-between;
+    min-width: 0;
+}
+
+.command-area {
+    display: flex;
+    align-items: center;
+    flex-grow: 1;
+    max-width: 500px;
 }
 
 .vim-mode {
@@ -296,6 +326,16 @@ body {
     align-items: center;
 }
 
+.command-input {
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    width: 100%;
+    outline: none;
+}
+
 /* Alterações dinâmicas de cor baseadas no modo do Vim via JS */
 .status-bar.mode-insert .vim-mode {
     background-color: var(--terminal-amber);
@@ -305,33 +345,18 @@ body {
     background-color: var(--terminal-green);
 }
 
-.file-info {
-    color: var(--text-secondary);
-}
-
-.command-area {
-    display: flex;
-    align-items: center;
-}
-
 .command-prefix {
     color: var(--terminal-green);
     font-weight: bold;
     margin-right: 4px;
 }
 
-.command-input {
-    background: transparent;
-    border: none;
-    color: var(--text-primary);
-    font-family: var(--font-mono);
-    font-size: 12px;
-    width: 250px;
-    outline: none;
-}
-
 .sync-status {
     color: var(--terminal-green);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 200px;
 }
 
 /* ==========================================================================

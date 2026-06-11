@@ -31,16 +31,20 @@ let selectedIndex = 0;
 
 const viewer = document.getElementById('renderView');
 const editor = document.getElementById('markdownEditor');
-
+//
 const commandInput = document.getElementById('commandInput');
 const statusMode = document.getElementById('vimMode');
+const syncStatus = document.getElementById('syncStatus');
 const fileTree = document.getElementById('fileTree');
-
+//
 const taskTitle = document.getElementById('taskTitle');
 const markdownContent = document.getElementById('markdownContent');
 const priorityBadge = document.getElementById('priorityBadge');
 const statusBadge = document.getElementById('statusBadge');
 const taskTags = document.getElementById('taskTags');
+
+
+let errorTimeoutId = null;
 
 // Handles sidebar file list rendering
 function renderSidebar() {
@@ -59,7 +63,6 @@ function renderSidebar() {
 
     fileTree.innerHTML = htmlBuffer;
 }
-
 
 // Handles sidebar cursor selection & task content rendering
 function renderSelection() {
@@ -92,6 +95,40 @@ function renderSelection() {
     taskTags.innerHTML = htmlBuffer;
 }
 
+// Handles parsing and executing input commands
+function parseCommand(buffer) {
+    let sections = buffer.trim().split(' ');
+    let command = sections[0].toLowerCase();
+    let argument = sections.slice(1).join(' ');
+
+    switch (command) {
+        case 'new':
+            console.log("Action: Create task with title ->", argument);
+            // TODO: call create task function
+            break;
+        
+        case 'del':
+            console.log("Action: Delete current task with index ->", selectedIndex);
+            // TODO: call delete task function
+            break;
+        
+        default:
+            if (errorTimeoutId) {
+                clearTimeout(errorTimeoutId);
+            }
+
+            let safeCommand = command.length > 5 ? command.substring(0,5) + '...' : command;
+
+            syncStatus.textContent = `● Error: ${safeCommand} invalid`;
+            syncStatus.style.color = 'red';
+
+            errorTimeoutId = setTimeout(() => {
+                syncStatus.textContent = '● Connected';
+                syncStatus.style.color = '';
+                errorTimeoutId = null;
+            }, 2000);
+            break; 
+    }
 }
 
 window.addEventListener('keydown', function(event) {
@@ -117,8 +154,8 @@ function handleNormalMode(event) {
         currentMode = 'COMMAND';
         statusMode.textContent = currentMode;
 
-        commandInput.readOnly = false;
         event.preventDefault();
+        commandInput.readOnly = false;
         commandInput.focus();
     }
 
@@ -152,6 +189,20 @@ function handleCommandMode(event) {
     let key = event.key;
 
     if (key === "Escape") {
+        currentMode = 'NORMAL';
+        statusMode.textContent = currentMode;
+
+        commandInput.readOnly = true;
+        commandInput.blur();
+        commandInput.value = '';
+    }
+
+    if (key === "Enter") {
+        event.preventDefault();
+
+        let commandBuffer = commandInput.value;
+        parseCommand(commandBuffer);
+
         currentMode = 'NORMAL';
         statusMode.textContent = currentMode;
 
