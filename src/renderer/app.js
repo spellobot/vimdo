@@ -24,8 +24,8 @@ let testArray = [
      * tags: (string)
      * content: (string) 
      */
-    {id:0, title:'Task 0', status:'pending', priority:'high', tags:["test", "other-test"], content:"<h1>Task</h1><p>This is a <b>test</b>.</p>"},
-    {id:1, title:'Task 1', status:'completed', priority:'low', tags:["test"], content:"<h1>Another task</h1> This is <i>another</i> <b>test</b>."}
+    {id:generateUniqueID(), title:'Task 0', status:'pending', priority:'high', tags:["test", "other-test"], content:"<h1>Task</h1><p>This is a <b>test</b>.</p>"},
+    {id:generateUniqueID(), title:'Task 1', status:'completed', priority:'low', tags:["test"], content:'<h1>Another task</h1> This is <i>another</i> <b>test</b>.'}
 ];
 let selectedIndex = 0;
 
@@ -42,9 +42,25 @@ const markdownContent = document.getElementById('markdownContent');
 const priorityBadge = document.getElementById('priorityBadge');
 const statusBadge = document.getElementById('statusBadge');
 const taskTags = document.getElementById('taskTags');
-
-
+//
 let errorTimeoutId = null;
+
+// Generates unique task ID using current date in YYYYMMDD_HHmmsssss format
+function generateUniqueID() {
+    let year, month, day, hours, minutes, seconds, miliseconds;
+    
+    const d = new Date();
+    
+    year = d.getFullYear();
+    month = String(d.getMonth() + 1).padStart(2, "0");
+    day = String(d.getDate()).padStart(2, "0");
+    hours = String(d.getHours()).padStart(2, "0");
+    minutes = String(d.getMinutes()).padStart(2, "0");
+    seconds = String(d.getSeconds()).padStart(2, "0");
+    miliseconds = String(d.getMilliseconds()).padStart(3, "0");
+
+    return `${year}${month}${day}_${hours}${minutes}${seconds}${miliseconds}`;
+}
 
 // Handles sidebar file list rendering
 function renderSidebar() {
@@ -91,6 +107,8 @@ function renderSelection() {
             <span class="tag-item">#${activeTask.tags[index].toLowerCase()}</span>
         `
     });
+
+    console.log('Task object: ' + activeTask);
 
     taskTags.innerHTML = htmlBuffer;
 }
