@@ -14,3 +14,12 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
+
+const { contextBridge, ipcRenderer } = require('electron');
+
+contextBridge.exposeInMainWorld('api', {
+    getTasks: () => ipcRenderer.invoke('tasks:get-all'),
+    getTaskContent: (taskId) => ipcRenderer.invoke('tasks:get-content', taskId),
+    saveTask: (task) => ipcRenderer.invoke('tasks:save', task),
+    deleteTask: (taskId) => ipcRenderer.invoke('tasks:delete', taskId)
+});
