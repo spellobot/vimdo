@@ -171,6 +171,7 @@ function handleNormalMode(event) {
     if (key === ":") {
         currentMode = 'COMMAND';
         statusMode.textContent = currentMode;
+        statusMode.closest('.status-bar').className = `status-bar mode-${currentMode.toLowerCase()}`;
 
         event.preventDefault();
         commandInput.readOnly = false;
@@ -180,6 +181,7 @@ function handleNormalMode(event) {
     if (key === "i") {
         currentMode = 'INSERT';
         statusMode.textContent = currentMode;
+        statusMode.closest('.status-bar').className = `status-bar mode-${currentMode.toLowerCase()}`;
 
         event.preventDefault();
         editor.value = testArray[selectedIndex].content;
@@ -209,6 +211,7 @@ function handleCommandMode(event) {
     if (key === "Escape") {
         currentMode = 'NORMAL';
         statusMode.textContent = currentMode;
+        statusMode.closest('.status-bar').className = `status-bar`;
 
         commandInput.readOnly = true;
         commandInput.blur();
@@ -223,6 +226,7 @@ function handleCommandMode(event) {
 
         currentMode = 'NORMAL';
         statusMode.textContent = currentMode;
+        statusMode.closest('.status-bar').className = `status-bar`;
 
         commandInput.readOnly = true;
         commandInput.blur();
@@ -236,6 +240,7 @@ function handleInsertMode(event) {
     if (key === "Escape") {
         currentMode = 'NORMAL';
         statusMode.textContent = currentMode;
+        statusMode.closest('.status-bar').className = `status-bar`;
 
         testArray[selectedIndex].content = editor.value;
         viewer.classList.remove('hidden');
