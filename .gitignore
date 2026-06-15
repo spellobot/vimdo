@@ -36,6 +36,7 @@ Thumbs.db
 *.njsproj
 *.sln
 *.swp
+*.code-workspace
 
 # Dados locais da aplicação (Ficheiros de teste)
 # Ignora o conteúdo da pasta de tarefas para não enviares os teus testes para o Git
