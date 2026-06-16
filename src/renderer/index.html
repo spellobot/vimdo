@@ -3,76 +3,67 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:;">
     <title>VimDo</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div class="app-container">
-        
+
         <div class="workspace">
-            
+
             <aside class="sidebar" id="sidebar">
                 <div class="sidebar-header">
-                    <span>Workspace</span>
+                    <span id="folderBreadcrumb">All folders</span>
+                    <span class="task-count" id="taskCount">0 tasks</span>
                 </div>
                 <nav class="file-tree" id="fileTree">
-                    <div class="folder-item">
-                        <span class="folder-name">Universidade</span>
-                        <div class="folder-content">
-                            <div class="file-item active" data-id="202606101700">
-                                <span class="status-indicator pending"></span>
-                                <span class="file-title">Estudar IPC</span>
-                            </div>
-                            <div class="file-item" data-id="202606101800">
-                                <span class="status-indicator completed"></span>
-                                <span class="file-title">Definir package.json</span>
-                            </div>
-                        </div>
-                    </div>
+                    <!-- Tasks are rendered here by app.js -->
                 </nav>
+                <div class="sidebar-footer">
+                    <span class="hint"><kbd>j</kbd>/<kbd>k</kbd> navigate</span>
+                    <span class="hint"><kbd>:</kbd> command</span>
+                    <span class="hint"><kbd>i</kbd> edit</span>
+                    <span class="hint"><kbd>x</kbd> toggle</span>
+                </div>
             </aside>
 
             <main class="content-viewer" id="contentViewer">
-                
+
                 <article id="renderView" class="view-mode">
                     <header class="task-header">
-                        <h1 id="taskTitle">Estudar IPC</h1>
+                        <h1 id="taskTitle">Loading…</h1>
                         <div class="metadata-bar">
-                            <span class="badge priority-high" id="priorityBadge">High</span>
-                            <span class="badge status-pending" id="statusBadge">Pending</span>
+                            <span class="badge priority-low" id="priorityBadge">—</span>
+                            <span class="badge status-pending" id="statusBadge">—</span>
                             <div class="tags-list" id="taskTags">
-                                <span class="tag-item">#universidade</span>
-                                <span class="tag-item">#electron</span>
+                                <!-- tags -->
                             </div>
                         </div>
                     </header>
                     <hr class="divider">
                     <section id="markdownContent" class="markdown-body">
-                        <p>O processo de renderização deve ler apenas o bloco necessário.</p>
-                        <ul>
-                            <li>Configurar os canais de escuta.</li>
-                            <li>Testar a latência de comunicação.</li>
-                        </ul>
+                        <p class="empty-state">Loading tasks…</p>
                     </section>
                 </article>
 
-                <textarea id="markdownEditor" class="edit-mode hidden" placeholder="Escreva a descrição da tarefa em Markdown bruto..."></textarea>
-                
+                <textarea id="markdownEditor" class="edit-mode hidden" placeholder="Escreva a descrição da tarefa em Markdown bruto..." spellcheck="false"></textarea>
+
             </main>
         </div>
 
         <footer class="status-bar">
             <div class="left-status">
                 <div class="vim-mode text-bold" id="vimMode">NORMAL</div>
-                <div class="file-info" id="fileInfo">Universidade/202606101700-estudar-ipc.md</div>
+                <div class="file-info" id="fileInfo">—</div>
             </div>
-            
+
             <div class="right-status">
                 <div class="command-area">
                     <span class="command-prefix" id="commandPrefix">:</span>
                     <input type="text" id="commandInput" class="command-input" autocomplete="off" spellcheck="false" readonly>
                 </div>
-                <div class="sync-status" id="syncStatus">● Connected</div>
+                <div class="sync-status" id="syncStatus">● Ready</div>
             </div>
         </footer>
 
