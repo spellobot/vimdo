@@ -43,6 +43,15 @@ let currentMode = 'NORMAL';
 let selectedIndex = 0;
 let errorTimeoutId = null;
 
+/** Lightweight metadata list currently displayed (after filter). */
+let allTasks = [];
+/** Full task currently loaded (with body). */
+let currentTaskFull = null;
+/** Active folder ("") means "show all". */
+let activeFolder = '';
+/** Active tag filter (null = no filter). */
+let tagFilter = null;
+
 // ===============================================================
 // DOM Helpers
 // ===============================================================
