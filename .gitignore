@@ -10,7 +10,6 @@ out/
 build/
 .webpack/
 aseg/
-*.zip
 
 # Logs do Sistema
 logs
@@ -43,3 +42,6 @@ Thumbs.db
 # Ignora o conteúdo da pasta de tarefas para não enviares os teus testes para o Git
 tasks/*
 !tasks/.gitkeep
+
+*.zip
+docs/
