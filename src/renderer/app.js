@@ -152,14 +152,13 @@ async function reloadCurrentTask() {
 
 // Turns title string into a URL-friendly slug
 function slugify(text) {
-    let slugifiedText;
-    slugifiedText = text.toLowerCase();
-    slugifiedText = slugifiedText.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-    slugifiedText = slugifiedText.replace(/\s+/g, "-");
-    slugifiedText = slugifiedText.replace(/[^a-z0-9 -]/g, "");
-    slugifiedText = slugifiedText.replace(/-+/g, "-");
-    slugifiedText = slugifiedText.replace(/^-+|-+$/g, "");
-    return slugifiedText || 'untitled';
+    let s = String(text).toLowerCase();
+    s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    s = s.replace(/\s+/g, '-');
+    s = s.replace(/[^a-z0-9-]/g, '');
+    s = s.replace(/-+/g, '-');
+    s = s.replace(/^-+|-+$/g, '');
+    return s || 'untitled';
 }
 
 // ===============================================================
