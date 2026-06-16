@@ -17,27 +17,49 @@
 
 const { app, BrowserWindow, ipcMain } = require('electron');
 const { join } = require('path');
-const os = require('os');
+const { StorageManager } = require('./storage');
 
-// Performance optimizations
-app.commandLine.appendSwitch('js-flags', '--max-old-space-size=32 --max-semi-space-size=2');
+/* Performance / sandbox switches – keeps the renderer light 
+   and avoids requiring GPU acceleration inside containers or VMs. */
+app.commandLine.appendSwitch('js-flags', '--max-old-space-size=64 --max-semi-space-size=4');
 app.commandLine.appendSwitch('disable-gpu');
 app.commandLine.appendSwitch('disable-software-rasterizer');
+app.commandLine.appendSwitch('no-sandbox');
+
+let storage;
+let mainWindow;
 
 function createWindow() {
-    const win = new BrowserWindow({
-        width: 800,
-        height: 600,
+    mainWindow = new BrowserWindow({
+        width: 1000,
+        height: 700,
+        minWidth: 720,
+        minHeight: 480,
+        backgroundColor: '#0a0c10',
+        title: 'VimDo',
         webPreferences: {
             preload: join(__dirname, '../preload/preload.js'),
             nodeIntegration: false,
-            contextIsolation: true
+            contextIsolation: true,
+            sandbox: false
         }
     });
-    win.loadFile(join(__dirname, '../renderer/index.html'));
+
+    mainWindow.setMenuBarVisibility(false);
+    mainWindow.loadFile(join(__dirname, '../renderer/index.html'));
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+    storage = new StorageManager();
+    await storage.init();
+
+    // Seed a few sample tasks on the very first launch so the user can see
+    // how the app behaves without having to create anything.
+    if (storage.getAllTasks().length === 0) {
+        await seedSampleTasks(storage);
+    }
+
+    registerIpcHandlers();
     createWindow();
 
     app.on('activate', () => {
@@ -45,6 +67,118 @@ app.whenReady().then(() => {
     });
 
     app.on('window-all-closed', () => {
-        if (process.platform != 'darwin') app.quit();
+        if (process.platform !== 'darwin') app.quit();
     });
 });
+
+function registerIpcHandlers() {
+    ipcMain.handle('tasks:get-all', (_event, filter) => {
+        return storage.getAllTasks(filter || {});
+    });
+
+    ipcMain.handle('tasks:get-content', (_event, id) => {
+        return storage.getTaskContent(id);
+    });
+
+    ipcMain.handle('tasks:get', (_event, id) => {
+        return storage.getTask(id);
+    });
+
+    ipcMain.handle('tasks:save', (_event, task) => {
+        return storage.saveTask(task);
+    });
+
+    ipcMain.handle('tasks:delete', (_event, id) => {
+        return storage.deleteTask(id);
+    });
+
+    ipcMain.handle('tasks:get-folders', () => {
+        return storage.getFolders();
+    });
+
+    // When the file system changes (external edit / future sync), nudge the
+    // renderer so it can refresh its index.
+    storage.onChange(() => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('tasks:changed');
+        }
+    });
+}
+
+async function seedSampleTasks(storage) {
+    const samples = [
+        {
+            title: 'Estudar IPC',
+            status: 'pending',
+            priority: 'high',
+            tags: ['universidade', 'electron'],
+            folder: 'Universidade',
+            body: [
+                '# Estudar IPC',
+                '',
+                'O processo de renderização deve ler apenas o bloco necessário.',
+                '',
+                '- [ ] Configurar os canais de escuta',
+                '- [ ] Testar a latência de comunicação',
+                '- [ ] Documentar o fluxo de dados',
+                '',
+                '> O `preload` atua como ponte segura entre os processos.'
+            ].join('\n')
+        },
+        {
+            title: 'Definir package.json',
+            status: 'completed',
+            priority: 'low',
+            tags: ['universidade'],
+            folder: 'Universidade',
+            body: [
+                '# Definir package.json',
+                '',
+                'Configuração inicial do projeto Electron.',
+                '',
+                '- [x] Versão do Electron definida',
+                '- [x] Scripts de inicialização criados',
+                '- [x] Dependências instaladas'
+            ].join('\n')
+        },
+        {
+            title: 'Reunião com cliente',
+            status: 'pending',
+            priority: 'high',
+            tags: ['trabalho'],
+            folder: 'Trabalho',
+            body: [
+                '# Reunião com cliente',
+                '',
+                'Pauta:',
+                '',
+                '1. Apresentação do MVP',
+                '2. Definição de prazos',
+                '3. Alinhamento de expectativas'
+            ].join('\n')
+        },
+        {
+            title: 'Compras da semana',
+            status: 'pending',
+            priority: 'medium',
+            tags: ['pessoal'],
+            folder: 'Pessoal',
+            body: [
+                '# Compras da semana',
+                '',
+                '- Pão',
+                '- Leite',
+                '- Café',
+                '- Fruta'
+            ].join('\n')
+        }
+    ];
+
+    for (const task of samples) {
+        try {
+            await storage.saveTask(task);
+        } catch (err) {
+            console.error(`[VimDo] Failed to seed task "${task.title}":`, err.message);
+        }
+    }
+}
