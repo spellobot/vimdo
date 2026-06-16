@@ -18,6 +18,7 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const { join } = require('path');
 const { StorageManager } = require('./storage');
+const { SyncEngine } = require('./syncEngine.js');
 
 /* Performance / sandbox switches – keeps the renderer light 
    and avoids requiring GPU acceleration inside containers or VMs. */
@@ -27,6 +28,7 @@ app.commandLine.appendSwitch('disable-software-rasterizer');
 app.commandLine.appendSwitch('no-sandbox');
 
 let storage;
+let syncEngine;
 let mainWindow;
 
 function createWindow() {
@@ -52,6 +54,9 @@ function createWindow() {
 app.whenReady().then(async () => {
     storage = new StorageManager();
     await storage.init();
+
+    syncEngine = new SyncEngine(storage);
+    await syncEngine.start();
 
     // Seed a few sample tasks on the very first launch so the user can see
     // how the app behaves without having to create anything.
@@ -84,8 +89,20 @@ function registerIpcHandlers() {
         return storage.getTask(id);
     });
 
-    ipcMain.handle('tasks:save', (_event, task) => {
+    ipcMain.handle('tasks:save', (_event, task) => {        
         return storage.saveTask(task);
+    });
+
+    ipcMain.handle('tasks:sync-all', async () => {
+        return await syncEngine.broadcastAllTasks();
+    });
+
+    ipcMain.handle('tasks:push-single', async (_, id) => {
+        const fullTask = await storage.getTask(id);
+        if (fullTask) {
+            syncEngine.broadcastTask(fullTask);
+        } 
+        return true;
     });
 
     ipcMain.handle('tasks:delete', (_event, id) => {

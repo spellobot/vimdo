@@ -617,10 +617,42 @@ async function parseCommand(buffer) {
             return;
         }
 
+        // ----- sync (Envia todas as tarefas) ------------------------------
+        case 'sync': {
+            showStatus('A sincronizar com a rede...', 'warn');
+            try {
+                const stats = await window.api.syncAll();
+                if (stats.peers === 0) {
+                    showStatus('Nenhum colega encontrado na rede.');
+                } else {
+                    showStatus(`Enviadas ${stats.tasks} tarefas para ${stats.peers} nó(s).`);
+                }
+            } catch (err) {
+                showError(`sync falhou: ${err.message}`);
+            }
+            return;
+        }
+
+        // ----- push (Envia apenas a tarefa ativa) -------------------------
+        case 'push':
+        case 'share': {
+            if (allTasks.length === 0 || !selectedTaskId) { 
+                showError('push: Nenhuma tarefa selecionada'); 
+                return; 
+            }
+            try {
+                await window.api.pushTask(selectedTaskId);
+                showStatus('Tarefa partilhada com a rede!');
+            } catch (err) {
+                showError(`push falhou: ${err.message}`);
+            }
+            return;
+        }
+
         // ----- help ------------------------------------------------------
         case 'help':
         case '?': {
-            showStatus('new, del, cd, open, tag, tag+, tag-, done, undo, toggle, priority, help');
+            showStatus('new, del, cd, open, tag, tag+, tag-, done, undo, toggle, priority, sync, push, help');
             return;
         }
 

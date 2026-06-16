@@ -29,5 +29,8 @@ contextBridge.exposeInMainWorld('api', {
     // 5. Fetch list of available folder strings
     getFolders: () => ipcRenderer.invoke('tasks:get-folders'),
     // 6. Listen for changes observed in the filesystem
-    onTasksChanged: (callback) => ipcRenderer.on('tasks:changed', (_event, ...args) => callback(...args))
+    onTasksChanged: (callback) => ipcRenderer.on('tasks:changed', (_event, ...args) => callback(...args)),
+
+    syncAll: () =>  ipcRenderer.invoke('tasks:sync-all'),
+    pushTask: (taskId) => ipcRenderer.invoke('tasks:push-single', taskId)
 });
