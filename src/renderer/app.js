@@ -78,7 +78,7 @@ function slugify(text) {
     slugifiedText = slugifiedText.replace(/[^a-z0-9 -]/g, "");
     slugifiedText = slugifiedText.replace(/-+/g, "-");
     slugifiedText = slugifiedText.replace(/^-+|-+$/g, "");
-    return slugifiedText;
+    return slugifiedText || 'untitled';
 }
 
 // Handles sidebar file list rendering
