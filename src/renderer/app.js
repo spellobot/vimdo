@@ -37,10 +37,12 @@ const markdownContent = document.getElementById('markdownContent');
 const priorityBadge = document.getElementById('priorityBadge');
 const statusBadge = document.getElementById('statusBadge');
 const taskTags = document.getElementById('taskTags');
+const folderBreadcrumb = document.getElementById('folderBreadcrumb');
+const taskCount = document.getElementById('taskCount');
 
 // --- State -----------------------------------------------------
 let currentMode = 'NORMAL';
-let selectedIndex = 0;
+let selectedTaskId = null;
 let errorTimeoutId = null;
 
 /** Lightweight metadata list currently displayed (after filter). */
@@ -56,46 +58,92 @@ let tagFilter = null;
 // DOM Helpers
 // ===============================================================
 
-// ...
+function escapeHtml(s) {
+    return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function setMode(mode) {
+    currentMode = mode;
+    statusMode.textContent = mode;
+    statusMode.closest('.status-bar').className =
+        mode === 'NORMAL' ? 'status-bar' : `status-bar mode-${mode.toLowerCase()}`;
+}
+
+function showStatus(msg, kind = 'info') {
+    if (errorTimeoutId) clearTimeout(errorTimeoutId);
+    syncStatus.textContent = `● ${msg}`;
+    syncStatus.style.color =
+        kind === 'error' ? 'var(--terminal-red)' :
+        kind === 'warn'  ? 'var(--terminal-amber)' :
+                           'var(--terminal-green)';
+    errorTimeoutId = setTimeout(() => {
+        syncStatus.textContent = '● Ready';
+        syncStatus.style.color = '';
+        errorTimeoutId = null;
+    }, 2200);
+}
+
+function showError(msg) { showStatus(msg, 'error'); }
+function showWarn(msg)  { showStatus(msg, 'warn'); }
 
 // ===============================================================
 // Data Loading
 // ===============================================================
 
-// Helper to create tasks objects safely
-function createTask(title, status, priority, tags, content) {
-    return {
-        id: generateUniqueID(title),
-        title: title,
-        status: status,
-        priority: priority,
-        tags: tags,
-        content: content
+async function loadTasks() {
+    const filter = {};
+    if (activeFolder) filter.folder = activeFolder;
+    if (tagFilter) filter.tag = tagFilter;
+
+    try {
+        allTasks = await window.api.getTasks(filter);
+    } catch (err) {
+        console.error(err);
+        showError('Storage unavailable');
+        allTasks = [];
     }
+
+    // Safely check if the currently selected task ID still exists in the newly loaded list.
+    // If not, default to the first available task.
+    const exists = allTasks.some((t) => t.id === selectedTaskId);
+    if (!exists) {
+        selectedTaskId = allTasks.length > 0 ? allTasks[0].id : null;
+    }
+
+    renderSidebar();
+    await renderSelection();
+    updateStatusBar();
 }
 
-// Array with testing tasks
-let testArray = [
-    createTask('Task 0', 'pending', 'high', ["test", "other-test"], "<h1>Task</h1><p>This is a <b>test</b>.</p>"),
-    createTask('Task 1', 'completed', 'low', ["test"], "<h1>Another task</h1> This is <i>another</i> <b>test</b>."),
-    createTask('Fódase Está Tarefa É "#/)( do CArAlho!', 'pending', 'low', ['caralho'], '<h1>Caralho</h1><p>Caralho.</p>')
-];
+async function reloadCurrentTask() {
+    if (allTasks.length === 0 || !selectedTaskId) {
+        currentTaskFull = null;
+        return;
+    }
+    try {
+        const result = await window.api.getTaskContent(selectedTaskId);
+        
+        // Vamos buscar os metadados da tarefa ativa (title, id, tags, etc.)
+        const activeTask = allTasks.find(t => t.id === selectedTaskId);
+        
+        // Normalizamos para garantir que o currentTaskFull é SEMPRE um objeto completo
+        if (typeof result === 'string') {
+            currentTaskFull = { ...activeTask, body: result };
+        } else if (typeof result === 'object' && result !== null) {
+            currentTaskFull = { ...activeTask, ...result };
+        } else {
+            currentTaskFull = { ...activeTask, body: '' };
+        }
 
-// Generates unique task ID using current date in YYYYMMDD_HHmmsssss format
-function generateUniqueID(title) {
-    let year, month, day, hours, minutes, seconds, miliseconds;
-    
-    const d = new Date();
-    
-    year = d.getFullYear();
-    month = String(d.getMonth() + 1).padStart(2, "0");
-    day = String(d.getDate()).padStart(2, "0");
-    hours = String(d.getHours()).padStart(2, "0");
-    minutes = String(d.getMinutes()).padStart(2, "0");
-    seconds = String(d.getSeconds()).padStart(2, "0");
-    miliseconds = String(d.getMilliseconds()).padStart(3, "0");
-
-    return `${year}${month}${day}_${hours}${minutes}${seconds}${miliseconds}_${slugify(title)}`;
+    } catch (err) {
+        console.error(err);
+        currentTaskFull = null;
+    }
 }
 
 // ===============================================================
@@ -118,98 +166,483 @@ function slugify(text) {
 // Rendering
 // ===============================================================
 
-// Handles sidebar file list rendering
 function renderSidebar() {
     fileTree.innerHTML = '';
-    
+
+    // Group tasks by folder for display.
+    const grouped = new Map();
+    for (const task of allTasks) {
+        const folder = task.folder || 'Sem Pasta';
+        if (!grouped.has(folder)) grouped.set(folder, []);
+        grouped.get(folder).push(task);
+    }
+
     let htmlBuffer = '';
-    
-    testArray.forEach((task, index) => {
-        htmlBuffer += `
-            <div class="file-item" data-index="${index}">
-                <span class="status-indicator ${task.status.toLowerCase()}"></span>
-                <span class="file-title">${task.title}</span>
-            </div>
-        `;
-    });
+    if (grouped.size === 0) {
+        htmlBuffer = `
+            <div class="empty-sidebar">
+                <p>No tasks found.</p>
+                <p>Press <kbd>:</kbd> then type <code>new [title]</code>.</p>
+            </div>`;
+    } else {
+        for (const [folder, tasks] of grouped.entries()) {
+            htmlBuffer += renderFolder(folder, tasks);
+        }
+    }
 
     fileTree.innerHTML = htmlBuffer;
 }
 
-// Handles sidebar cursor selection & task content rendering
-function renderSelection() {
-
-    // Sidebar cursor selection
-    let elementList = document.querySelectorAll('.file-item');
-    elementList.forEach(element => {
-        element.classList.remove('active');
+function renderFolder(folder, tasks) {
+    let items = '';
+    tasks.forEach((task) => {
+        const globalIdx = allTasks.indexOf(task);
+        const statusCls = task.status === 'completed' ? 'completed' : 'pending';
+        items += `
+            <div class="file-item" data-index="${globalIdx}" data-id="${escapeHtml(task.id)}">
+                <span class="status-indicator ${statusCls}"></span>
+                <span class="file-title">${escapeHtml(task.title)}</span>
+            </div>`;
     });
-    elementList[selectedIndex].classList.add('active');
+    return `
+        <div class="folder-item">
+            <span class="folder-name" data-folder="${escapeHtml(folder)}">${escapeHtml(folder)}</span>
+            <div class="folder-content">${items}</div>
+        </div>`;
+}
 
-    // Selected task content
-    let activeTask = testArray[selectedIndex];
+async function renderSelection() {
+    // Highlight selected file in the sidebar.
+    const elements = document.querySelectorAll('.file-item');
+    elements.forEach((el) => el.classList.remove('active'));
+
+    const activeTask = allTasks.find(task => task.id === selectedTaskId);
+
+    if (activeTask) {
+        const activeElement = document.querySelector(`.file-item[data-id="${selectedTaskId}"]`);
+        if (activeElement) {
+            activeElement.classList.add('active');
+            activeElement.scrollIntoView({ block: 'nearest' });
+        }
+    }
+
+    if (allTasks.length === 0 || !activeTask) {
+        taskTitle.textContent = '—';
+        priorityBadge.className = 'badge';
+        priorityBadge.textContent = '';
+        statusBadge.className = 'badge';
+        statusBadge.textContent = '';
+        taskTags.innerHTML = '';
+        markdownContent.innerHTML = `
+            <p class="empty-state">
+                No task selected.<br>
+                Press <kbd>:</kbd> to enter command mode, then type <code>new &lt;title&gt;</code>.
+            </p>`;
+        currentTaskFull = null;
+        return;
+    }
+
+    await reloadCurrentTask();
 
     taskTitle.textContent = activeTask.title;
-    markdownContent.innerHTML = activeTask.content;
+
     priorityBadge.className = `badge priority-${activeTask.priority}`;
-    priorityBadge.textContent = `${activeTask.priority}`;
+    priorityBadge.textContent = activeTask.priority;
     statusBadge.className = `badge status-${activeTask.status}`;
-    statusBadge.textContent = `${activeTask.status}`;
+    statusBadge.textContent = activeTask.status;
 
-    let htmlBuffer = '';
+    let tagsHtml = '';
+    for (const tag of (activeTask.tags || [])) {
+        tagsHtml += `<span class="tag-item">#${escapeHtml(String(tag).toLowerCase())}</span>`;
+    }
+    taskTags.innerHTML = tagsHtml;
 
-    activeTask.tags.forEach((tag, index) => {
-        htmlBuffer += `
-            <span class="tag-item">#${activeTask.tags[index].toLowerCase()}</span>
-        `
-    });
+    // Handles both an object containing .body or raw body string safely.
+    const markdownBody = currentTaskFull?.body || '';
+    markdownContent.innerHTML = renderMarkdown(markdownBody);
+}
 
-    console.log(activeTask);
+function updateStatusBar() {
+    const task = allTasks.find(t => t.id === selectedTaskId);
+    if (task) {
+        const slug = slugify(task.title);
+        const folderPrefix = task.folder ? `${task.folder}/` : '';
+        fileInfo.textContent = `${folderPrefix}${task.id}-${slug}.md`;
+    } else {
+        fileInfo.textContent = '—';
+    }
 
-    taskTags.innerHTML = htmlBuffer;
+    const folderLabel = activeFolder || (tagFilter ? `#${tagFilter}` : 'All folders');
+    folderBreadcrumb.textContent = folderLabel;
+    taskCount.textContent = `${allTasks.length} task${allTasks.length === 1 ? '' : 's'}`;
 }
 
 // ===============================================================
 // Markdown to HTML Renderer
 // ===============================================================
 
+function renderMarkdown(md) {
+    if (!md || !md.trim()) {
+        return '<p class="empty-state">No content yet. Press <kbd>i</kbd> to edit.</p>';
+    }
+
+    const codeBlocks = [];
+    md = md.replace(/```([\w-]*)\n([\s\S]*?)```/g, (_m, lang, code) => {
+        const idx = codeBlocks.length;
+        codeBlocks.push({ lang, code });
+        return `\u0000CODEBLOCK${idx}\u0000`;
+    });
+
+    md = md
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+
+    md = md.replace(/\r\n/g, '\n');
+
+    const lines = md.split('\n');
+    const out = [];
+    let i = 0;
+
+    const inline = (s) => s
+        .replace(/`([^`]+)`/g, '<code>$1</code>')
+        .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+        .replace(/_([^_]+)_/g, '<em>$1</em>')
+        .replace(/~~([^~]+)~~/g, '<del>$1</del>')
+        .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1">')
+        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
+        .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1">$1</a>');
+
+    while (i < lines.length) {
+        const line = lines[i];
+
+        const codeMatch = line.match(/^\u0000CODEBLOCK(\d+)\u0000$/);
+        if (codeMatch) {
+            const block = codeBlocks[Number(codeMatch[1])];
+            out.push(`<pre><code class="lang-${escapeHtml(block.lang || '')}">${escapeHtml(block.code.replace(/\n$/, ''))}</code></pre>`);
+            i++;
+            continue;
+        }
+
+        if (line.trim() === '') { i++; continue; }
+
+        if (/^(-{3,}|\*{3,}|_{3,})$/.test(line.trim())) {
+            out.push('<hr>');
+            i++;
+            continue;
+        }
+
+        const h = line.match(/^(#{1,6})\s+(.*)$/);
+        if (h) {
+            const level = h[1].length;
+            out.push(`<h${level}>${inline(h[2])}</h${level}>`);
+            i++;
+            continue;
+        }
+
+        if (/^>\s?/.test(line)) {
+            const buf = [];
+            while (i < lines.length && /^>\s?/.test(lines[i])) {
+                buf.push(lines[i].replace(/^>\s?/, ''));
+                i++;
+            }
+            out.push(`<blockquote>${inline(buf.join(' '))}</blockquote>`);
+            continue;
+        }
+
+        const taskItem = line.match(/^[-*]\s+\[([ xX])\]\s+(.*)$/);
+        if (taskItem) {
+            const checked = taskItem[1].toLowerCase() === 'x';
+            const cls = checked ? 'task-check checked' : 'task-check unchecked';
+            const mark = checked ? '☑' : '☐';
+            // CORREÇÃO: Adicionado o <span class="text-content"> para o CSS atuar corretamente
+            out.push(`<div class="${cls}"><span class="check-box">${mark}</span> <span class="text-content">${inline(taskItem[2])}</span></div>`);
+            i++;
+            continue;
+        }
+
+        if (/^[-*]\s+/.test(line)) {
+            const items = [];
+            while (i < lines.length && /^[-*]\s+/.test(lines[i])) {
+                items.push(`<li>${inline(lines[i].replace(/^[-*]\s+/, ''))}</li>`);
+                i++;
+            }
+            out.push(`<ul>${items.join('')}</ul>`);
+            continue;
+        }
+
+        if (/^\d+\.\s+/.test(line)) {
+            const items = [];
+            while (i < lines.length && /^\d+\.\s+/.test(lines[i])) {
+                items.push(`<li>${inline(lines[i].replace(/^\d+\.\s+/, ''))}</li>`);
+                i++;
+            }
+            out.push(`<ol>${items.join('')}</ol>`);
+            continue;
+        }
+
+        const buf = [];
+        while (i < lines.length &&
+            lines[i].trim() !== '' &&
+            !/^(#{1,6}\s|>\s?|[-*]\s|\d+\.\s|(-{3,}|\*{3,}|_{3,})$)/.test(lines[i]) &&
+            !/^\u0000CODEBLOCK/.test(lines[i])) {
+            buf.push(lines[i]);
+            i++;
+        }
+        if (buf.length) {
+            out.push(`<p>${inline(buf.join('<br>'))}</p>`);
+        }
+    }
+
+    return out.join('\n');
+}
+
 // ===============================================================
 // Command Parser
 // ===============================================================
 
-// Handles parsing and executing input commands
-function parseCommand(buffer) {
-    let sections = buffer.trim().split(' ');
-    let command = sections[0].toLowerCase();
-    let argument = sections.slice(1).join(' ');
+async function parseCommand(buffer) {
+    const trimmed = buffer.trim();
+    if (!trimmed) return;
+
+    const parts = trimmed.split(/\s+/);
+    const command = parts[0].toLowerCase();
+    const argument = parts.slice(1).join(' ');
 
     switch (command) {
-        case 'new':
-            console.log("Action: Create task with title ->", argument);
-            // TODO: call create task function
-            break;
-        
-        case 'del':
-            console.log("Action: Delete current task with index ->", selectedIndex);
-            // TODO: call delete task function
-            break;
-        
-        default:
-            if (errorTimeoutId) {
-                clearTimeout(errorTimeoutId);
+        // ----- new [folder]/[title] or new [title] ----------------------
+        case 'new': {
+            let folder, title;
+            if (argument.includes('/')) {
+                const slashIdx = argument.lastIndexOf('/');
+                folder = argument.slice(0, slashIdx);
+                title = argument.slice(slashIdx + 1);
+            } else {
+                folder = activeFolder;
+                title = argument;
             }
 
-            let safeCommand = command.length > 5 ? command.substring(0,5) + '...' : command;
+            if (!title) { showError('new: title required'); return; }
 
-            syncStatus.textContent = `● Error: ${safeCommand} invalid`;
-            syncStatus.style.color = 'red';
+            try {
+                const saved = await window.api.saveTask({
+                    title,
+                    status: 'pending',
+                    priority: 'low',
+                    tags: [],
+                    folder,
+                    //body: `# ${title}\n`
+                    body: ''
+                });
+                selectedTaskId = saved.id;
+                await loadTasks();
+                showStatus(`Created: ${title}`);
+            } catch (err) {
+                showError(`new: ${err.message}`);
+            }
+            return;
+        }
 
-            errorTimeoutId = setTimeout(() => {
-                syncStatus.textContent = '● Connected';
-                syncStatus.style.color = '';
-                errorTimeoutId = null;
-            }, 2000);
-            break; 
+        // ----- del [folder]/[title] or del ------------------------------
+        case 'del':
+        case 'delete':
+        case 'rm': {
+            if (allTasks.length === 0 || !selectedTaskId) { showError('del: no task to delete'); return; }
+
+            let targetId;
+            if (argument) {
+                const found = allTasks.find((t) => {
+                    const full = (t.folder ? t.folder + '/' : '') + t.title;
+                    return full.toLowerCase() === argument.toLowerCase() ||
+                        t.title.toLowerCase() === argument.toLowerCase();
+                });
+                if (!found) { showError(`del: not found: ${argument}`); return; }
+                targetId = found.id;
+            } else {
+                targetId = selectedTaskId;
+            }
+
+            try {
+                // If deleting the active task, select its closest visual sibling next
+                if (selectedTaskId === targetId) {
+                    const elements = Array.from(document.querySelectorAll('.file-item'));
+                    const currentIdx = elements.findIndex((el) => el.dataset.id === selectedTaskId);
+                    if (currentIdx >= 0) {
+                        const nextSelected = elements[currentIdx + 1] || elements[currentIdx - 1];
+                        selectedTaskId = nextSelected ? nextSelected.dataset.id : null;
+                    }
+                }
+                await window.api.deleteTask(targetId);
+                await loadTasks();
+                showStatus('Deleted');
+            } catch (err) {
+                showError(`del: ${err.message}`);
+            }
+            return;
+        }
+
+        // ----- cd [folder] / open [folder] ------------------------------
+        case 'cd': {
+            if (!argument || argument === '/') {
+                activeFolder = '';
+                tagFilter = null;
+                selectedTaskId = null;
+                await loadTasks();
+                showStatus('Showing all folders');
+                return;
+            }
+            try {
+                const folders = await window.api.getFolders();
+                if (folders.includes(argument)) {
+                    activeFolder = argument;
+                    tagFilter = null;
+                    selectedTaskId = null;
+                    await loadTasks();
+                    showStatus(`Folder: ${argument}`);
+                } else {
+                    showError(`cd: folder not found: ${argument}`);
+                }
+            } catch (err) {
+                showError(`cd: ${err.message}`);
+            }
+            return;
+        }
+
+        // ----- open [folder]/[title] or open ----------------------------
+        case 'open': {
+            if (!argument) {
+                await renderSelection();
+                return;
+            }
+            try {
+                const folders = await window.api.getFolders();
+                if (folders.includes(argument)) {
+                    activeFolder = argument;
+                    tagFilter = null;
+                    selectedTaskId = null;
+                    await loadTasks();
+                    showStatus(`Folder: ${argument}`);
+                    return;
+                }
+            } catch (_) { /* ignore */ }
+
+            const found = allTasks.find((t) => {
+                const full = (t.folder ? t.folder + '/' : '') + t.title;
+                return full.toLowerCase() === argument.toLowerCase();
+            });
+            if (found) {
+                selectedTaskId = found.id;
+                await renderSelection();
+                updateStatusBar();
+                showStatus(`Opened: ${found.title}`);
+            } else {
+                showError(`open: not found: ${argument}`);
+            }
+            return;
+        }
+
+        // ----- tag [name] ------------------------------------------------
+        case 'tag': {
+            if (!argument) {
+                tagFilter = null;
+                showStatus('Tag filter cleared');
+            } else {
+                tagFilter = argument.replace(/^#/, '').toLowerCase();
+                showStatus(`Filter: #${tagFilter}`);
+            }
+            selectedTaskId = null;
+            await loadTasks();
+            return;
+        }
+
+        // ----- done / undo ----------------------------------------------
+        case 'done':
+        case 'complete': {
+            if (allTasks.length === 0 || !selectedTaskId) { showError('done: no task selected'); return; }
+            await patchCurrentTask({ status: 'completed' });
+            showStatus('Marked done');
+            return;
+        }
+
+        case 'undo':
+        case 'pending': {
+            if (allTasks.length === 0 || !selectedTaskId) { showError('undo: no task selected'); return; }
+            await patchCurrentTask({ status: 'pending' });
+            showStatus('Marked pending');
+            return;
+        }
+
+        case 'toggle': {
+            if (allTasks.length === 0 || !selectedTaskId) return;
+            const task = allTasks.find((t) => t.id === selectedTaskId);
+            if (!task) return;
+            const next = task.status === 'completed' ? 'pending' : 'completed';
+            await patchCurrentTask({ status: next });
+            showStatus(`Status: ${next}`);
+            return;
+        }
+
+        // ----- priority [low|medium|high] -------------------------------
+        case 'priority':
+        case 'p': {
+            if (allTasks.length === 0 || !selectedTaskId) { showError('priority: no task selected'); return; }
+            const p = (argument || '').toLowerCase();
+            if (!['low', 'medium', 'high'].includes(p)) {
+                showError('priority: must be low | medium | high');
+                return;
+            }
+            await patchCurrentTask({ priority: p });
+            showStatus(`Priority: ${p}`);
+            return;
+        }
+
+        // ----- tag add/remove -------------------------------------------
+        case 'tag+': {
+            if (allTasks.length === 0 || !selectedTaskId) { showError('tag+: no task selected'); return; }
+            if (!argument) { showError('tag+: name required'); return; }
+            const name = argument.replace(/^#/, '').toLowerCase();
+            const tags = Array.from(new Set([...(currentTaskFull?.tags || []), name]));
+            await patchCurrentTask({ tags });
+            showStatus(`Added #${name}`);
+            return;
+        }
+
+        case 'tag-': {
+            if (allTasks.length === 0 || !selectedTaskId) { showError('tag-: no task selected'); return; }
+            if (!argument) { showError('tag-: name required'); return; }
+            const name = argument.replace(/^#/, '').toLowerCase();
+            const tags = (currentTaskFull?.tags || []).filter((t) => t !== name);
+            await patchCurrentTask({ tags });
+            showStatus(`Removed #${name}`);
+            return;
+        }
+
+        // ----- help ------------------------------------------------------
+        case 'help':
+        case '?': {
+            showStatus('new, del, cd, open, tag, tag+, tag-, done, undo, toggle, priority, help');
+            return;
+        }
+
+        default:
+            showError(`Unknown: ${command.substring(0, 12)}`);
+    }
+}
+
+/**
+ * Patch the currently selected task with partial fields and reload.
+ */
+async function patchCurrentTask(patch) {
+    if (!currentTaskFull) return;
+    try {
+        await window.api.saveTask({
+            ...currentTaskFull,
+            ...patch
+        });
+        await loadTasks();
+    } catch (err) {
+        showError(err.message);
     }
 }
 
@@ -217,113 +650,188 @@ function parseCommand(buffer) {
 // Keyboard State Machine
 // ===============================================================
 
-window.addEventListener('keydown', function(event) {
-    switch (currentMode) {
-        case 'NORMAL':
-            handleNormalMode(event);
-            break;
+window.addEventListener('keydown', async (event) => {
+    if (event.key === 'Escape') {
+        if (currentMode === 'INSERT') {
+            event.preventDefault();
+            await handleInsertEscape();
+            return;
+        }
+        if (currentMode === 'COMMAND') {
+            event.preventDefault();
+            exitCommandMode();
+            return;
+        }
+    }
 
-        case 'COMMAND':
-            handleCommandMode(event);
-            break;
+    if (currentMode === 'INSERT' && document.activeElement === editor) {
+        return;
+    }
 
-        case 'INSERT':
-            handleInsertMode(event);
-            break;
+    if (currentMode === 'COMMAND' && document.activeElement === commandInput) {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            const buffer = commandInput.value;
+            exitCommandMode();
+            await parseCommand(buffer);
+        }
+        return;
+    }
+
+    if (currentMode === 'NORMAL') {
+        await handleNormalMode(event);
     }
 });
 
-function handleNormalMode(event) {
-    let key = event.key;
+function exitCommandMode() {
+    setMode('NORMAL');
+    commandInput.readOnly = true;
+    commandInput.blur();
+    commandInput.value = '';
+}
 
-    if (key === ":") {
-        currentMode = 'COMMAND';
-        statusMode.textContent = currentMode;
-        statusMode.closest('.status-bar').className = `status-bar mode-${currentMode.toLowerCase()}`;
+async function handleNormalMode(event) {
+    const key = event.key;
 
+    if (key === ':') {
         event.preventDefault();
+        setMode('COMMAND');
         commandInput.readOnly = false;
         commandInput.focus();
+        return;
     }
 
-    if (key === "i") {
-        currentMode = 'INSERT';
-        statusMode.textContent = currentMode;
-        statusMode.closest('.status-bar').className = `status-bar mode-${currentMode.toLowerCase()}`;
-
+    if (key === 'i' || key === 'a') {
+        if (allTasks.length === 0 || !selectedTaskId) return;
         event.preventDefault();
-        editor.value = testArray[selectedIndex].content;
+        setMode('INSERT');
+        editor.value = currentTaskFull?.body || '';
         viewer.classList.add('hidden');
         editor.classList.remove('hidden');
         editor.focus();
-    }
-    
-    if (key === "j") {
-        if (selectedIndex + 1 < testArray.length) {
-                selectedIndex++;
-                renderSelection();
-        }
+        return;
     }
 
-    if (key === "k") {
-        if (selectedIndex > 0) {
-            selectedIndex--;
-            renderSelection();
-        }
-    }
-}
-
-function handleCommandMode(event) {
-    let key = event.key;
-
-    if (key === "Escape") {
-        currentMode = 'NORMAL';
-        statusMode.textContent = currentMode;
-        statusMode.closest('.status-bar').className = `status-bar`;
-
-        commandInput.readOnly = true;
-        commandInput.blur();
-        commandInput.value = '';
-    }
-
-    if (key === "Enter") {
+    // Visual tree lookup to move exactly one row up/down in DOM folder order
+    if (key === 'j' || key === 'ArrowDown') {
         event.preventDefault();
+        const elements = Array.from(document.querySelectorAll('.file-item'));
+        const currentIdx = elements.findIndex((el) => el.dataset.id === selectedTaskId);
+        if (currentIdx !== -1 && currentIdx + 1 < elements.length) {
+            selectedTaskId = elements[currentIdx + 1].dataset.id;
+            await renderSelection();
+            updateStatusBar();
+        }
+        return;
+    }
+    if (key === 'k' || key === 'ArrowUp') {
+        event.preventDefault();
+        const elements = Array.from(document.querySelectorAll('.file-item'));
+        const currentIdx = elements.findIndex((el) => el.dataset.id === selectedTaskId);
+        if (currentIdx !== -1 && currentIdx > 0) {
+            selectedTaskId = elements[currentIdx - 1].dataset.id;
+            await renderSelection();
+            updateStatusBar();
+        }
+        return;
+    }
 
-        let commandBuffer = commandInput.value;
-        parseCommand(commandBuffer);
+    if (key === 'g') {
+        event.preventDefault();
+        const elements = document.querySelectorAll('.file-item');
+        if (elements.length > 0) {
+            selectedTaskId = elements[0].dataset.id;
+            await renderSelection();
+            updateStatusBar();
+        }
+        return;
+    }
+    if (key === 'G') {
+        event.preventDefault();
+        const elements = document.querySelectorAll('.file-item');
+        if (elements.length > 0) {
+            selectedTaskId = elements[elements.length - 1].dataset.id;
+            await renderSelection();
+            updateStatusBar();
+        }
+        return;
+    }
 
-        currentMode = 'NORMAL';
-        statusMode.textContent = currentMode;
-        statusMode.closest('.status-bar').className = `status-bar`;
+    if (key === 'x') {
+        event.preventDefault();
+        await parseCommand('toggle');
+        return;
+    }
 
-        commandInput.readOnly = true;
-        commandInput.blur();
-        commandInput.value = '';
+    if (key === '?') {
+        event.preventDefault();
+        showStatus('Commands: new, del, cd, open, tag, done, undo, toggle, priority, help');
     }
 }
 
-function handleInsertMode(event) {
-    let key = event.key;
+async function handleInsertEscape() {
+    setMode('NORMAL');
 
-    if (key === "Escape") {
-        currentMode = 'NORMAL';
-        statusMode.textContent = currentMode;
-        statusMode.closest('.status-bar').className = `status-bar`;
-
-        testArray[selectedIndex].content = editor.value;
-        viewer.classList.remove('hidden');
-        editor.classList.add('hidden');
-        editor.blur();
-
-        renderSelection();
+    // CORREÇÃO: Aplicar .trim() para evitar que cada Esc crie novos espaços indesejados
+    const newBody = editor.value.trim();
+    if (currentTaskFull && newBody !== (currentTaskFull.body || '').trim()) {
+        try {
+            currentTaskFull.body = newBody;
+            await window.api.saveTask(currentTaskFull);
+            showStatus('Saved');
+        } catch (err) {
+            showError(`Save failed: ${err.message}`);
+        }
     }
+
+    viewer.classList.remove('hidden');
+    editor.classList.add('hidden');
+    editor.blur();
+
+    await loadTasks();
 }
 
 // ===============================================================
 // Mouse Interactions
 // ===============================================================
 
-// ...
+fileTree.addEventListener('click', async (event) => {
+    const folderEl = event.target.closest('.folder-name');
+    if (folderEl) {
+        const folder = folderEl.dataset.folder;
+        if (folder && folder !== 'Sem Pasta') {
+            activeFolder = folder;
+            tagFilter = null;
+            selectedTaskId = null;
+            await loadTasks();
+        } else if (folder === 'Sem Pasta') {
+            activeFolder = '';
+            tagFilter = null;
+            selectedTaskId = null;
+            await loadTasks();
+        }
+        return;
+    }
+
+    const item = event.target.closest('.file-item');
+    if (!item) return;
+    const taskId = item.dataset.id;
+    if (taskId) {
+        selectedTaskId = taskId;
+        await renderSelection();
+        updateStatusBar();
+    }
+});
+
+taskTags.addEventListener('click', async (event) => {
+    const tagEl = event.target.closest('.tag-item');
+    if (!tagEl) return;
+    const name = tagEl.textContent.replace(/^#/, '');
+    tagFilter = name;
+    selectedTaskId = null;
+    await loadTasks();
+    showStatus(`Filter: #${name}`);
+});
 
 // ===============================================================
 // External FS Change Listener
@@ -331,9 +839,18 @@ function handleInsertMode(event) {
 
 // TODO: P2P Sync, External Editing
 
+if (window.api && typeof window.api.onTasksChanged === 'function') {
+    window.api.onTasksChanged(async () => {
+        await loadTasks();
+        showStatus('Files updated externally');
+    });
+}
+
 // ===============================================================
 // Bootstrap
 // ===============================================================
 
-renderSidebar();
-renderSelection();
+(async () => {
+    await loadTasks();
+    showStatus('Ready');
+})();
