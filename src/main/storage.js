@@ -113,7 +113,6 @@ class StorageManager {
         delete fm.filePath;
         const yamlStr = YAML.stringify(fm).trimEnd();
         
-        // CORREÇÃO: Prevenir a dupla injeção de novas quebras de linha durante a gravação
         const safeBody = (body || '').replace(/^(\r?\n)+/, '');
         
         return `---\n${yamlStr}\n---\n\n${safeBody}`;
