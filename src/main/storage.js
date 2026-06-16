@@ -269,6 +269,8 @@ class StorageManager {
         await fs.writeFile(filePath, fileContent, 'utf-8');
         await this._indexFile(filePath, folder);
 
+        this._notifyChange();
+
         return this.index.get(id);
     }
 
@@ -293,6 +295,9 @@ class StorageManager {
             }
         }
         this.index.delete(id);
+
+        this._notifyChange();
+
         return true;
     }
 
