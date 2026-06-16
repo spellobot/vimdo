@@ -429,6 +429,9 @@ code {
 
 .markdown-body .task-check.checked {
     color: var(--text-secondary);
+}
+
+.markdown-body .task-check.checked span.text-content {
     text-decoration: line-through;
 }
 
