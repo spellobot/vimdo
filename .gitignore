@@ -10,6 +10,7 @@ out/
 build/
 .webpack/
 aseg/
+*.zip
 
 # Logs do Sistema
 logs
