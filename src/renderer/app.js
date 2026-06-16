@@ -15,23 +15,43 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-let currentMode = 'NORMAL';
-let selectedIndex = 0;
-let errorTimeoutId = null;
+/* ============================================================
+ * VimDo (Renderer)
+ *
+ * Function:
+ * 1. Render the sidebar + main viewer.
+ * 2. Drive the Vim-style state machine.
+ * 3. Parse & execute command-line commands.
+ * 4. Persist changes through the IPC bridge (`window.api`). 
+ * ============================================================ */
 
+// --- DOM Handles ----------------------------------------------
 const viewer = document.getElementById('renderView');
 const editor = document.getElementById('markdownEditor');
-//
 const commandInput = document.getElementById('commandInput');
 const statusMode = document.getElementById('vimMode');
 const syncStatus = document.getElementById('syncStatus');
 const fileTree = document.getElementById('fileTree');
-//
 const taskTitle = document.getElementById('taskTitle');
 const markdownContent = document.getElementById('markdownContent');
 const priorityBadge = document.getElementById('priorityBadge');
 const statusBadge = document.getElementById('statusBadge');
 const taskTags = document.getElementById('taskTags');
+
+// --- State -----------------------------------------------------
+let currentMode = 'NORMAL';
+let selectedIndex = 0;
+let errorTimeoutId = null;
+
+// ===============================================================
+// DOM Helpers
+// ===============================================================
+
+// ...
+
+// ===============================================================
+// Data Loading
+// ===============================================================
 
 // Helper to create tasks objects safely
 function createTask(title, status, priority, tags, content) {
@@ -69,6 +89,10 @@ function generateUniqueID(title) {
     return `${year}${month}${day}_${hours}${minutes}${seconds}${miliseconds}_${slugify(title)}`;
 }
 
+// ===============================================================
+// Slugify
+// ===============================================================
+
 // Turns title string into a URL-friendly slug
 function slugify(text) {
     let slugifiedText;
@@ -80,6 +104,10 @@ function slugify(text) {
     slugifiedText = slugifiedText.replace(/^-+|-+$/g, "");
     return slugifiedText || 'untitled';
 }
+
+// ===============================================================
+// Rendering
+// ===============================================================
 
 // Handles sidebar file list rendering
 function renderSidebar() {
@@ -132,6 +160,14 @@ function renderSelection() {
     taskTags.innerHTML = htmlBuffer;
 }
 
+// ===============================================================
+// Markdown to HTML Renderer
+// ===============================================================
+
+// ===============================================================
+// Command Parser
+// ===============================================================
+
 // Handles parsing and executing input commands
 function parseCommand(buffer) {
     let sections = buffer.trim().split(' ');
@@ -167,6 +203,10 @@ function parseCommand(buffer) {
             break; 
     }
 }
+
+// ===============================================================
+// Keyboard State Machine
+// ===============================================================
 
 window.addEventListener('keydown', function(event) {
     switch (currentMode) {
@@ -269,6 +309,22 @@ function handleInsertMode(event) {
         renderSelection();
     }
 }
+
+// ===============================================================
+// Mouse Interactions
+// ===============================================================
+
+// ...
+
+// ===============================================================
+// External FS Change Listener
+// ===============================================================
+
+// TODO: P2P Sync, External Editing
+
+// ===============================================================
+// Bootstrap
+// ===============================================================
 
 renderSidebar();
 renderSelection();
