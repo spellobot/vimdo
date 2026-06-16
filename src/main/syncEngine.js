@@ -73,7 +73,7 @@ class SyncEngine {
             const peerId = service.name;
             
             this.peers.set(peerId, { ip: peerIp, port: service.port });
-            console.log(`[P2P] Nó descoberto: ${peerId} em ${peerIp}:${service.port}`);
+            console.log(`[P2P] Peer discovered: ${peerId} at ${peerIp}:${service.port}`);
         });
     }
 
