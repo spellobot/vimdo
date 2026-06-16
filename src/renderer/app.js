@@ -16,18 +16,8 @@
  */
 
 let currentMode = 'NORMAL';
-let testArray = [
-    /* id: (int)
-     * title: (string)
-     * status: [pending, completed]
-     * priority: [low, high]
-     * tags: (string)
-     * content: (string) 
-     */
-    {id:generateUniqueID(), title:'Task 0', status:'pending', priority:'high', tags:["test", "other-test"], content:"<h1>Task</h1><p>This is a <b>test</b>.</p>"},
-    {id:generateUniqueID(), title:'Task 1', status:'completed', priority:'low', tags:["test"], content:'<h1>Another task</h1> This is <i>another</i> <b>test</b>.'}
-];
 let selectedIndex = 0;
+let errorTimeoutId = null;
 
 const viewer = document.getElementById('renderView');
 const editor = document.getElementById('markdownEditor');
@@ -42,11 +32,28 @@ const markdownContent = document.getElementById('markdownContent');
 const priorityBadge = document.getElementById('priorityBadge');
 const statusBadge = document.getElementById('statusBadge');
 const taskTags = document.getElementById('taskTags');
-//
-let errorTimeoutId = null;
+
+// Helper to create tasks objects safely
+function createTask(title, status, priority, tags, content) {
+    return {
+        id: generateUniqueID(title),
+        title: title,
+        status: status,
+        priority: priority,
+        tags: tags,
+        content: content
+    }
+}
+
+// Array with testing tasks
+let testArray = [
+    createTask('Task 0', 'pending', 'high', ["test", "other-test"], "<h1>Task</h1><p>This is a <b>test</b>.</p>"),
+    createTask('Task 1', 'completed', 'low', ["test"], "<h1>Another task</h1> This is <i>another</i> <b>test</b>."),
+    createTask('Fódase Está Tarefa É "#/)( do CArAlho!', 'pending', 'low', ['caralho'], '<h1>Caralho</h1><p>Caralho.</p>')
+];
 
 // Generates unique task ID using current date in YYYYMMDD_HHmmsssss format
-function generateUniqueID() {
+function generateUniqueID(title) {
     let year, month, day, hours, minutes, seconds, miliseconds;
     
     const d = new Date();
@@ -59,7 +66,19 @@ function generateUniqueID() {
     seconds = String(d.getSeconds()).padStart(2, "0");
     miliseconds = String(d.getMilliseconds()).padStart(3, "0");
 
-    return `${year}${month}${day}_${hours}${minutes}${seconds}${miliseconds}`;
+    return `${year}${month}${day}_${hours}${minutes}${seconds}${miliseconds}_${slugify(title)}`;
+}
+
+// Turns title string into a URL-friendly slug
+function slugify(text) {
+    let slugifiedText;
+    slugifiedText = text.toLowerCase();
+    slugifiedText = slugifiedText.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    slugifiedText = slugifiedText.replace(/\s+/g, "-");
+    slugifiedText = slugifiedText.replace(/[^a-z0-9 -]/g, "");
+    slugifiedText = slugifiedText.replace(/-+/g, "-");
+    slugifiedText = slugifiedText.replace(/^-+|-+$/g, "");
+    return slugifiedText;
 }
 
 // Handles sidebar file list rendering
@@ -108,7 +127,7 @@ function renderSelection() {
         `
     });
 
-    console.log('Task object: ' + activeTask);
+    console.log(activeTask);
 
     taskTags.innerHTML = htmlBuffer;
 }
