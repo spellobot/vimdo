@@ -18,8 +18,16 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('api', {
-    getTasks: () => ipcRenderer.invoke('tasks:get-all'),
+    // 1. Fetch metadata list (passes optional filter object)
+    getTasks: (filter) => ipcRenderer.invoke('tasks:get-all', filter),
+    // 2. Fetch full body content of a single task
     getTaskContent: (taskId) => ipcRenderer.invoke('tasks:get-content', taskId),
+    // 3. Save or update task content/metadata
     saveTask: (task) => ipcRenderer.invoke('tasks:save', task),
-    deleteTask: (taskId) => ipcRenderer.invoke('tasks:delete', taskId)
+    // 4. Delete task
+    deleteTask: (taskId) => ipcRenderer.invoke('tasks:delete', taskId),
+    // 5. Fetch list of available folder strings
+    getFolders: () => ipcRenderer.invoke('tasks:get-folders'),
+    // 6. Listen for changes observed in the filesystem
+    onTasksChanged: (callback) => ipcRenderer.on('tasks:changed', (_event, ...args) => callback(...args))
 });
