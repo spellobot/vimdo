@@ -65,13 +65,15 @@ class SyncEngine {
 
         // Search for other peers in the network
         this.bonjour.find({ type: 'vimdo' }, (service) => {
-            if (service.name === this.instanceId) return;
-
-            const peerIp = service.address.find(ip => ip.includes('.')) || service.address[0];
+            if (!service.addresses || !Array.isArray(service.addresses) || service.addresses.length === 0) {
+                return; 
+            }
+            
+            const peerIp = service.addresses.find(ip => ip.includes('.')) || service.addresses[0];
             const peerId = service.name;
-
+            
             this.peers.set(peerId, { ip: peerIp, port: service.port });
-            console.log(`[P2P] Peer discovered: ${peerId} in ${peerIp}:${service.port}`);
+            console.log(`[P2P] Nó descoberto: ${peerId} em ${peerIp}:${service.port}`);
         });
     }
 
