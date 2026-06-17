@@ -1,7 +1,7 @@
 {
     "name": "vimdo",
     "desktopName": "com.aribrandao.vimdo.desktop",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "To-Do App based in Markdown featuring P2P syncing",
     "main": "src/main/main.js",
     "scripts": {
@@ -38,7 +38,8 @@
             "syncDesktopName": true
         },
         "win": {
-            "target": "nsis"
+            "target": "nsis",
+            "icon": "src/assets/icon.png"
         },
         "mac": {
             "target": "dmg",
