@@ -41,7 +41,8 @@
             "target": "nsis"
         },
         "mac": {
-            "target": "dmg"
+            "target": "dmg",
+            "icon": "src/assets/icon.png"
         }
     }
 }
