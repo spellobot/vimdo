@@ -1,10 +1,12 @@
 {
     "name": "vimdo",
+    "desktopName": "com.aribrandao.vimdo.desktop",
     "version": "1.0.0",
     "description": "To-Do App based in Markdown featuring P2P syncing",
     "main": "src/main/main.js",
     "scripts": {
-        "start": "electron ."
+        "start": "electron .",
+        "dist": "electron-builder"
     },
     "keywords": [],
     "author": "Ari Brandão",
@@ -15,10 +17,31 @@
         "yaml": "^2.7.0"
     },
     "devDependencies": {
-        "electron": "^42.3.3"
+        "electron": "^42.3.3",
+        "electron-builder": "^26.15.3"
     },
     "type": "commonjs",
     "allowScripts": {
         "electron@42.3.3": true
+    },
+    "build": {
+        "appId": "com.aribrandao.vimdo",
+        "productName": "VimDo",
+        "directories": {
+            "output": "dist"
+        },
+        "linux": {
+            "target": "AppImage",
+            "icon": "src/assets/icon.png",
+            "category": "Utility",
+            "executableName": "vimdo",
+            "syncDesktopName": true
+        },
+        "win": {
+            "target": "nsis"
+        },
+        "mac": {
+            "target": "dmg"
+        }
     }
 }

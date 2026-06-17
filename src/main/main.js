@@ -39,6 +39,7 @@ function createWindow() {
         minHeight: 480,
         backgroundColor: '#0a0c10',
         title: 'VimDo',
+        icon: join(__dirname, "../assets/icon.png"),
         webPreferences: {
             preload: join(__dirname, '../preload/preload.js'),
             nodeIntegration: false,

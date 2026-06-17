@@ -1,3 +1,7 @@
+<p align="center">
+   <img src="src/assets/icon.png" width="128" alt="VimDo Logo">
+</p>
+
 # VimDo
 
 ## Introduction
