@@ -4,6 +4,8 @@
 
 VimDo is a decentralized, local-first task management application built with Electron. It combines the efficiency of Vim-style keyboard navigation with the transparency of plain-text Markdown storage. Designed for privacy and resilience, VimDo operates without a central server, allowing users to safely synchronize tasks across local network devices via a Peer-to-Peer (P2P) architecture.
 
+**Academic Context:** This project was developed as part of the "Advanced Programming" (*Programação Avançada*) course at **ISLA Gaia**, under the guidance and request of **Prof. Luís Osório**.
+
 ## Features
 
 * **Keyboard-Driven Workflow:** Navigate and edit tasks using Vim state modes (Normal, Command, Insert).
