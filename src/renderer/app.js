@@ -796,7 +796,7 @@ async function handleNormalMode(event) {
 
     if (key === '?') {
         event.preventDefault();
-        showStatus('Commands: new, del, cd, open, tag, done, undo, toggle, priority, help');
+        showStatus('new, del, cd, open, tag, tag+, tag-, done, undo, toggle, priority, sync, push, help');;
     }
 }
 
